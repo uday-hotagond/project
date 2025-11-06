@@ -1,49 +1,37 @@
-#include <RH_ASK.h> // Include RadioHead Amplitude Shift Keying Library
-#include <SPI.h>    // Include dependant SPI Library
+#include <RH_ASK.h>
+#include <SPI.h>
+
 RH_ASK rf_driver;
-char *data;
 
-int Switch = 7;
-
-int switch_result;
-
+const int touchPin = 7;
+const int irPin = 8;
 
 void setup() {
   Serial.begin(9600);
   rf_driver.init();
-  pinMode(Switch, INPUT);
+  pinMode(touchPin, INPUT);
+  pinMode(irPin, INPUT);
 }
 
-void loop()
-{
+void loop() {
+  int touchState = digitalRead(touchPin);
+  int irState = digitalRead(irPin);
 
-  switch_result = digitalRead(Switch);
+  char *msg;
 
-  Serial.print("switch:");
-  Serial.println(switch_result);
-
-
-  if (switch_result == 1)
-  {
-
-    data = "a";
-    rf_driver.send((uint8_t *)data, strlen(data));
-    rf_driver.waitPacketSent();
-    {
-      Serial.println("Message Transmitted: a");
-      delay(500);
-    }
-  }
-  else
-  {
-    data = "b";
-    rf_driver.send((uint8_t *)data, strlen(data));
-    rf_driver.waitPacketSent();
-    {
-      Serial.println("Message Transmitted: b");
-      delay(500);
-    }
-    
+  if (touchState == HIGH && irState == HIGH) {
+    msg = "A";  // Helmet worn & awake
+  } else if (touchState == HIGH && irState == LOW) {
+    msg = "B";  // Helmet worn but sleepy
+  } else {
+    msg = "C";  // Helmet not worn
   }
 
+  rf_driver.send((uint8_t *)msg, strlen(msg));
+  rf_driver.waitPacketSent();
+
+  Serial.print("Sent: ");
+  Serial.println(msg);
+
+  delay(500);
 }
