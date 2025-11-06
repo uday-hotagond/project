@@ -1,58 +1,51 @@
-#include <RH_ASK.h> // Include RadioHead Amplitude Shift Keying Library
-#include <SPI.h> // Include dependant SPI Library
- 
-// Create Amplitude Shift Keying Object
+#include <RH_ASK.h>
+#include <SPI.h>
+
 RH_ASK rf_driver;
 
-
- int IR = 8;
- int IR_result;                                                                                                                                                                                                                                                 
-
- int relay = 6;
+const int relayPin = 6;
+const int buzzerPin = 5;
 
 void setup() {
   Serial.begin(9600);
   rf_driver.init();
-  pinMode(relay, OUTPUT);
-  pinMode(IR, INPUT);
-  digitalWrite(relay, HIGH);
-  
+  pinMode(relayPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+
+  digitalWrite(relayPin, HIGH);  // Motor OFF by default
+  digitalWrite(buzzerPin, LOW);  // Buzzer off
 }
 
 void loop() {
+  uint8_t buf[4];
+  uint8_t buflen = sizeof(buf);
 
-IR_result = digitalRead(IR);
+  if (rf_driver.recv(buf, &buflen)) {
+    char message = buf[0];
+    Serial.print("Received: ");
+    Serial.println(message);
 
-Serial.print("IR:");
-Serial.println(IR_result);
+    if (message == 'A') {
+      // Helmet worn & awake
+      digitalWrite(relayPin, LOW);  // Motor ON
+      digitalWrite(buzzerPin, LOW); // Buzzer OFF
+    } 
+    else if (message == 'B') {
+      // Helmet worn & sleepy
+      digitalWrite(relayPin, HIGH); // Motor OFF
+      digitalWrite(buzzerPin, HIGH); // Buzzer ON
+    } 
+    else if (message == 'C') {
+      // Helmet not worn
+      digitalWrite(relayPin, HIGH); // Motor OFF
+      digitalWrite(buzzerPin, LOW); // Buzzer OFF
+    }
+  } 
+  else {
+    // Fail-safe: no signal
+    digitalWrite(relayPin, HIGH);
+    digitalWrite(buzzerPin, LOW);
+  }
 
-uint8_t buf[11];
-uint8_t buflen = sizeof(buf);
-if (rf_driver.recv(buf, &buflen))
-{
-Serial.print("Message Received: ");
-Serial.println((char*)buf);
-
-if((buf[0] == 'a') && (IR_result == 0))
-{
-  Serial.println("Vehicle is STOP");
-  digitalWrite(relay, HIGH);
-}
-else if((buf[0] == 'a') && (IR_result == 1))
-{
-  Serial.println("Vehicle is strat");
-  digitalWrite(relay, LOW);
-}
-else if(buf[0] == 'b')
-{
-  digitalWrite(relay, HIGH);
-}
-
-
-}
-else
-{
-  digitalWrite(relay, HIGH);
-}
-delay(1000);
+  delay(500);
 }
